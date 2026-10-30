@@ -221,7 +221,17 @@ def initialize_qparams(
         if len(observed_shape) < 2:
             raise ValueError("Channel quant requires at least 2 observed dimensions")
 
-        expected_shape = (observed_shape[-2], 1)
+        if observed_shape[-2] is None:
+            # attention activations are observed as (num_heads, None, head_dim)
+            # with unknown sequence length: flatten heads*head_dim into channels
+            if len(observed_shape) < 3:
+                raise ValueError(
+                    "Channel quant with unknown channel dimension requires "
+                    "at least 3 observed dimensions"
+                )
+            expected_shape = (observed_shape[-3] * observed_shape[-1], 1)
+        else:
+            expected_shape = (observed_shape[-2], 1)
 
     elif strategy in (QuantizationStrategy.GROUP, QuantizationStrategy.TENSOR_GROUP):
         assert quantization_args.group_size is not None

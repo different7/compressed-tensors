@@ -13,6 +13,7 @@ from compressed_tensors.quantization.quant_args import (
     FP6_E2M3_DATA,
     FP8_E4M3_DATA,
     QuantizationArgs,
+    QuantizationStrategy,
     QuantizationType,
 )
 
@@ -42,8 +43,14 @@ def should_generate_mx_scales(args: QuantizationArgs):
     return (
         args.num_bits in (4, 6, 8)
         and args.type == QuantizationType.FLOAT.value
-        and args.group_size == 32
         and args.scale_dtype == torch.uint8
+        and (
+            args.group_size == 32
+            or (
+                args.strategy == QuantizationStrategy.CHANNEL.value
+                and args.group_size is None
+            )
+        )
     )
 
 

@@ -15,11 +15,13 @@ from compressed_tensors.quantization import (
     QuantizationScheme,
     QuantizationStatus,
     QuantizationStrategy,
+    QuantizationType,
 )
 from compressed_tensors.quantization.lifecycle.initialize import (
     _is_attention_module,
     initialize_attn_qparams,
     initialize_module_for_quantization,
+    initialize_qparams,
     is_attention_module,
     is_cached_attention_module,
 )
@@ -172,6 +174,48 @@ def _initialize_attn_qparams(config):
 
     initialize_attn_qparams(attention, scheme, force_zero_point=False)
     return attention
+
+
+def test_initialize_attn_qparams_channel_strategy():
+    """Channel strategy on attention flattens num_kv_heads*head_dim into channels."""
+    config = SimpleNamespace(
+        num_attention_heads=8,
+        num_key_value_heads=2,
+        head_dim=16,
+    )
+    attention = CacheAwareAttention()
+    attention.kv_cache = MockKVCache(config)
+    scheme = QuantizationScheme(
+        targets=["CacheAwareAttention"],
+        input_activations=QuantizationArgs(
+            num_bits=8,
+            type=QuantizationType.FLOAT,
+            strategy=QuantizationStrategy.CHANNEL,
+            symmetric=True,
+            scale_dtype=torch.uint8,
+        ),
+    )
+
+    initialize_attn_qparams(attention, scheme, force_zero_point=False)
+
+    assert attention.k_scale.shape == (2 * 16, 1)
+    assert attention.v_scale.shape == (2 * 16, 1)
+
+
+def test_initialize_qparams_channel_unknown_dim_requires_three_dims():
+    """Channel quant with unknown channel dim and fewer than 3 dims is rejected."""
+    layer = Linear(4, 4)
+    args = QuantizationArgs(strategy=QuantizationStrategy.CHANNEL)
+
+    with pytest.raises(ValueError, match="at least 3 observed dimensions"):
+        initialize_qparams(
+            layer,
+            "input",
+            args,
+            observed_shape=(None, 4),
+            observed_dtype=torch.float32,
+            force_zero_point=False,
+        )
 
 
 @pytest.mark.parametrize(

@@ -67,7 +67,7 @@ def test_unsupported_activation_strategy_still_rejected():
         QuantizationScheme(
             targets=["Linear"],
             input_activations=QuantizationArgs(
-                num_bits=8, strategy=QuantizationStrategy.CHANNEL
+                num_bits=8, strategy=QuantizationStrategy.BLOCK, block_structure=[2, 4]
             ),
         )
 

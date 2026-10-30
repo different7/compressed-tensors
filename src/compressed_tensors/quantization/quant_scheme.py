@@ -55,6 +55,7 @@ class QuantizationScheme(BaseModel, use_enum_values=True):
                 QuantizationStrategy.TENSOR,
                 QuantizationStrategy.GROUP,
                 QuantizationStrategy.TENSOR_GROUP,
+                QuantizationStrategy.CHANNEL,
                 QuantizationStrategy.ATTN_HEAD,
             ):
                 raise NotImplementedError(
